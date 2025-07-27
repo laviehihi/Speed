@@ -1,0 +1,49 @@
+{
+    "manifest_version": 3,
+    "name": "HTML5 Universal Speed Hack",
+    "description": "Speeds up or slows down browser games, HTML5 and more...",
+    "version": "12.0",
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "icons": {
+        "162": "icon.png"
+    },
+    "action": {
+        "default_icon": "icon.png",
+        "default_title": "HTML5 Universal Speed Hack Free",
+        "default_popup": "popup.html"
+    },
+    "permissions": [
+        "scripting",
+        "activeTab",
+        "storage"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "all_frames": true,
+            "world": "MAIN",
+            "run_at": "document_start",
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "pageScript.js"
+            ]
+        },
+        {
+            "all_frames": true,
+            "world": "ISOLATED",
+            "run_at": "document_start",
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "contentScript.js"
+            ]
+        }
+    ]
+}
