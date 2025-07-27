@@ -1,12 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
     const toggleBtn = document.getElementById("toggleBtn");
 
-    // Hàm cập nhật UI
     function updateUI(isRunning) {
         toggleBtn.textContent = isRunning ? "Pause" : "Start";
     }
 
-    // Gửi cấu hình tốc độ vào tab hiện tại
     function sendSpeedConfig(isRunning) {
         const config = {
             command: "setSpeedConfig",
@@ -31,13 +29,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Đọc trạng thái từ storage
     chrome.storage.local.get(["isRunning"], (result) => {
         const isRunning = result.isRunning === true;
         updateUI(isRunning);
     });
 
-    // Xử lý khi click nút
     toggleBtn.addEventListener("click", () => {
         chrome.storage.local.get(["isRunning"], (result) => {
             const isRunning = result.isRunning === true;
