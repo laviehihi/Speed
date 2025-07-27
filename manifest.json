@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "HTML5 Universal Speed Hack",
+    "name": "HTML5 Speed Hack",
     "description": "Speeds up or slows down browser games, HTML5 and more...",
-    "version": "12.0",
+    "version": "1.0",
     "host_permissions": [
         "<all_urls>"
     ],
@@ -11,7 +11,7 @@
     },
     "action": {
         "default_icon": "icon.png",
-        "default_title": "HTML5 Universal Speed Hack Free",
+        "default_title": "HTML5 Speed Hack Free",
         "default_popup": "popup.html"
     },
     "permissions": [
