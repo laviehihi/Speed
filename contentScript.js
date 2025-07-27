@@ -7,6 +7,22 @@ let speedConfig = {
     cbRequestAnimationFrameChecked: false,
 };
 
+chrome.storage.local.set({ isRunning: false }, () => {
+    const resetConfig = {
+        command: "setSpeedConfig",
+        config: {
+            speed: 1,
+            cbSetIntervalChecked: true,
+            cbSetTimeoutChecked: true,
+            cbPerformanceNowChecked: true,
+            cbDateNowChecked: true,
+            cbRequestAnimationFrameChecked: true
+        }
+    };
+
+    window.postMessage(resetConfig, "*");
+});
+
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (request.command == "setSpeedConfig") {
         speedConfig = request.config;
