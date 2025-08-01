@@ -1,4 +1,13 @@
 function pageScript() {
+    console.log("Enhanced page script executing on:", window.location.href);
+    
+    // Prevent multiple injections
+    if (window.speedHackInjected) {
+        console.log("Speed hack already injected, skipping...");
+        return;
+    }
+    window.speedHackInjected = true;
+    
     let speedConfig = {
         speed: 1.0,
         cbSetIntervalChecked: false,
@@ -8,187 +17,250 @@ function pageScript() {
         cbRequestAnimationFrameChecked: false,
     };
 
-    const originalClearInterval = window.clearInterval;
-    const originalclearTimeout = window.clearTimeout;
-
-    const originalSetInterval = window.setInterval;
-    const originalSetTimeout = window.setTimeout;
-
-    const originalPerformanceNow = window.performance.now.bind(
-        window.performance
-    );
-
-    const originalDateNow = Date.now;
-
-    const originalRequestAnimationFrame = window.requestAnimationFrame;
-
-    let timers = [];
-    const reloadTimers = () => {
-        console.log(timers);
-        const newtimers = [];
-        timers.forEach((timer) => {
-            originalClearInterval(timer.id);
-            if (timer.customTimerId) {
-                originalClearInterval(timer.customTimerId);
-            }
-            if (!timer.finished) {
-                const newTimerId = originalSetInterval(
-                    timer.handler,
-                    speedConfig.cbSetIntervalChecked ?
-                        timer.timeout / speedConfig.speed :
-                        timer.timeout,
-                    ...timer.args
-                );
-                timer.customTimerId = newTimerId;
-                newtimers.push(timer);
-            }
-        });
-        timers = newtimers;
+    // Store original functions safely
+    const originalFunctions = {
+        clearInterval: window.clearInterval.bind(window),
+        clearTimeout: window.clearTimeout.bind(window),
+        setInterval: window.setInterval.bind(window),
+        setTimeout: window.setTimeout.bind(window),
+        performanceNow: window.performance.now.bind(window.performance),
+        dateNow: Date.now.bind(Date),
+        requestAnimationFrame: window.requestAnimationFrame.bind(window),
+        cancelAnimationFrame: window.cancelAnimationFrame ? window.cancelAnimationFrame.bind(window) : null
     };
 
+    // Enhanced timer management
+    let timers = new Map();
+    let timeoutTimers = new Map();
+    let nextTimerId = 1;
+    
+    const reloadTimers = () => {
+        console.log("Reloading timers with speed:", speedConfig.speed);
+        
+        // Reload intervals
+        timers.forEach((timer, id) => {
+            if (!timer.finished) {
+                originalFunctions.clearInterval(timer.realId);
+                if (timer.customId) {
+                    originalFunctions.clearInterval(timer.customId);
+                }
+                
+                const newTimeout = speedConfig.cbSetIntervalChecked ? 
+                    Math.max(1, timer.timeout / speedConfig.speed) : timer.timeout;
+                
+                const newId = originalFunctions.setInterval(
+                    timer.handler,
+                    newTimeout,
+                    ...timer.args
+                );
+                timer.customId = newId;
+            }
+        });
+        
+        // Note: setTimeout timers are not reloaded as they're one-time
+    };
+
+    // Enhanced message handling
     window.addEventListener("message", (e) => {
-        if (e.data.command === "setSpeedConfig") {
-            speedConfig = e.data.config;
-            reloadTimers();
+        if (e.data && e.data.command === "setSpeedConfig" && e.data.config) {
+            console.log("Speed config received:", e.data.config);
+            const oldSpeed = speedConfig.speed;
+            speedConfig = { ...speedConfig, ...e.data.config };
+            
+            // Only reload timers if speed actually changed
+            if (oldSpeed !== speedConfig.speed) {
+                reloadTimers();
+            }
         }
     });
 
-    window.postMessage({
-        command: "getSpeedConfig"
-    });
+    // Signal that page script is ready
+    setTimeout(() => {
+        window.postMessage({ command: "pageScriptReady" }, "*");
+        window.postMessage({ command: "getSpeedConfig" }, "*");
+    }, 50);
 
+    // Enhanced timer function overrides
     window.clearInterval = (id) => {
-        originalClearInterval(id);
-        timers.forEach((timer) => {
-            if (timer.id == id) {
-                timer.finished = true;
-                if (timer.customTimerId) {
-                    originalClearInterval(timer.customTimerId);
-                }
+        const timer = timers.get(id);
+        if (timer) {
+            timer.finished = true;
+            originalFunctions.clearInterval(timer.realId);
+            if (timer.customId) {
+                originalFunctions.clearInterval(timer.customId);
             }
-        });
+            timers.delete(id);
+        } else {
+            originalFunctions.clearInterval(id);
+        }
     };
 
     window.clearTimeout = (id) => {
-        originalclearTimeout(id);
-        timers.forEach((timer) => {
-            if (timer.id == id) {
-                timer.finished = true;
-                if (timer.customTimerId) {
-                    originalclearTimeout(timer.customTimerId);
-                }
-            }
-        });
+        const timer = timeoutTimers.get(id);
+        if (timer) {
+            originalFunctions.clearTimeout(timer.realId);
+            timeoutTimers.delete(id);
+        } else {
+            originalFunctions.clearTimeout(id);
+        }
     };
 
     window.setInterval = (handler, timeout, ...args) => {
-        console.log("timeout  ", timeout);
-        if (!timeout) timeout = 0;
-        const id = originalSetInterval(
-            handler,
-            speedConfig.cbSetIntervalChecked ? timeout / speedConfig.speed : timeout,
-            ...args
-        );
-        timers.push({
-            id: id,
+        if (typeof handler !== 'function') {
+            return originalFunctions.setInterval(handler, timeout, ...args);
+        }
+        
+        timeout = Math.max(0, timeout || 0);
+        const adjustedTimeout = speedConfig.cbSetIntervalChecked ? 
+            Math.max(1, timeout / speedConfig.speed) : timeout;
+        
+        const realId = originalFunctions.setInterval(handler, adjustedTimeout, ...args);
+        const virtualId = nextTimerId++;
+        
+        timers.set(virtualId, {
+            realId: realId,
             handler: handler,
             timeout: timeout,
             args: args,
             finished: false,
-            customTimerId: null,
+            customId: null
         });
-        return id;
+        
+        return virtualId;
     };
 
     window.setTimeout = (handler, timeout, ...args) => {
-        if (!timeout) timeout = 0;
-        return originalSetTimeout(
-            handler,
-            speedConfig.cbSetTimeoutChecked ? timeout / speedConfig.speed : timeout,
-            ...args
-        );
+        if (typeof handler !== 'function') {
+            return originalFunctions.setTimeout(handler, timeout, ...args);
+        }
+        
+        timeout = Math.max(0, timeout || 0);
+        const adjustedTimeout = speedConfig.cbSetTimeoutChecked ? 
+            Math.max(1, timeout / speedConfig.speed) : timeout;
+        
+        const realId = originalFunctions.setTimeout(handler, adjustedTimeout, ...args);
+        const virtualId = nextTimerId++;
+        
+        timeoutTimers.set(virtualId, { realId: realId });
+        
+        return virtualId;
     };
 
-    // performance.now
+    // Enhanced performance.now override
     (function () {
         let performanceNowValue = null;
-        let previusPerformanceNowValue = null;
+        let previousPerformanceNowValue = null;
+        let lastUpdateTime = originalFunctions.performanceNow();
+        
         window.performance.now = () => {
-            const originalValue = originalPerformanceNow();
-            if (performanceNowValue) {
-                performanceNowValue +=
-                    (originalValue - previusPerformanceNowValue) *
-                    (speedConfig.cbPerformanceNowChecked ? speedConfig.speed : 1);
-            } else {
+            const originalValue = originalFunctions.performanceNow();
+            
+            if (performanceNowValue === null) {
                 performanceNowValue = originalValue;
+                previousPerformanceNowValue = originalValue;
+                lastUpdateTime = originalValue;
+                return performanceNowValue;
             }
-            previusPerformanceNowValue = originalValue;
-            return Math.floor(performanceNowValue);
+            
+            const deltaTime = originalValue - previousPerformanceNowValue;
+            const speedMultiplier = speedConfig.cbPerformanceNowChecked ? speedConfig.speed : 1;
+            
+            performanceNowValue += deltaTime * speedMultiplier;
+            previousPerformanceNowValue = originalValue;
+            
+            return performanceNowValue;
         };
     })();
 
-    // Date.now
+    // Enhanced Date.now override
     (function () {
         let dateNowValue = null;
-        let previusDateNowValue = null;
+        let previousDateNowValue = null;
+        
         Date.now = () => {
-            const originalValue = originalDateNow();
-            if (dateNowValue) {
-                dateNowValue +=
-                    (originalValue - previusDateNowValue) *
-                    (speedConfig.cbDateNowChecked ? speedConfig.speed : 1);
-            } else {
+            const originalValue = originalFunctions.dateNow();
+            
+            if (dateNowValue === null) {
                 dateNowValue = originalValue;
+                previousDateNowValue = originalValue;
+                return dateNowValue;
             }
-            previusDateNowValue = originalValue;
+            
+            const deltaTime = originalValue - previousDateNowValue;
+            const speedMultiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 1;
+            
+            dateNowValue += deltaTime * speedMultiplier;
+            previousDateNowValue = originalValue;
+            
             return Math.floor(dateNowValue);
         };
     })();
 
-    // requestAnimationFrame
+    // Enhanced requestAnimationFrame override
     (function () {
-        let disableRequestAnimationFrame = false;
-        const callbackFunctions = [];
-        const callbackTick = [];
+        let rafCallbacks = new Map();
+        let rafId = 1;
+        let isProcessing = false;
+        
         window.requestAnimationFrame = (callback) => {
-            if (disableRequestAnimationFrame) return 1;
-            return originalRequestAnimationFrame((timestamp) => {
-                const index = callbackFunctions.indexOf(callback);
-                let tickFrame = null;
-                if (index == -1) {
-                    callbackFunctions.push(callback);
-                    callbackTick.push(0);
-                    callback(performance.now());
-                } else if (speedConfig.cbRequestAnimationFrameChecked) {
-                    tickFrame = callbackTick[index];
-                    tickFrame += speedConfig.speed;
-
-                    if (tickFrame >= 1) {
-                        const startTime = originalPerformanceNow();
-                        while (tickFrame >= 1) {
-                            try {
-                                callback(performance.now());
-                            } catch (e) {
-                                console.error(e);
-                            }
-                            disableRequestAnimationFrame = true;
-                            tickFrame -= 1;
-                            if (originalPerformanceNow() - startTime > 15) {
-                                tickFrame = 0;
-                                break;
-                            }
-                        }
-                        disableRequestAnimationFrame = false;
-                    } else {
-                        window.requestAnimationFrame(callback);
+            if (typeof callback !== 'function') {
+                return originalFunctions.requestAnimationFrame(callback);
+            }
+            
+            const id = rafId++;
+            
+            if (!speedConfig.cbRequestAnimationFrameChecked || speedConfig.speed === 1) {
+                const realId = originalFunctions.requestAnimationFrame(callback);
+                rafCallbacks.set(id, { realId, callback });
+                return id;
+            }
+            
+            // For speed hacking, we need to call the callback multiple times per frame
+            const realId = originalFunctions.requestAnimationFrame((timestamp) => {
+                if (!rafCallbacks.has(id)) return;
+                
+                const callbackData = rafCallbacks.get(id);
+                rafCallbacks.delete(id);
+                
+                if (isProcessing) {
+                    callback(timestamp);
+                    return;
+                }
+                
+                isProcessing = true;
+                const speed = speedConfig.speed;
+                const maxCalls = Math.min(Math.ceil(speed), 10); // Limit to prevent browser freeze
+                
+                try {
+                    for (let i = 0; i < maxCalls; i++) {
+                        callback(timestamp + (i * 16.67)); // Simulate 60fps timing
                     }
-                    callbackTick[index] = tickFrame;
-                } else {
-                    callback(performance.now());
+                } catch (e) {
+                    console.error("RAF callback error:", e);
+                } finally {
+                    isProcessing = false;
                 }
             });
+            
+            rafCallbacks.set(id, { realId, callback });
+            return id;
         };
+        
+        // Override cancelAnimationFrame if it exists
+        if (originalFunctions.cancelAnimationFrame) {
+            window.cancelAnimationFrame = (id) => {
+                const callbackData = rafCallbacks.get(id);
+                if (callbackData) {
+                    originalFunctions.cancelAnimationFrame(callbackData.realId);
+                    rafCallbacks.delete(id);
+                } else {
+                    originalFunctions.cancelAnimationFrame(id);
+                }
+            };
+        }
     })();
+    
+    console.log("Enhanced speed hack injection complete");
 }
 
 pageScript();
