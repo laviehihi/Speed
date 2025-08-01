@@ -8,7 +8,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-align: center;
             padding: 15px;
-            width: 180px;
+            width: 220px;
             margin: 0;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -21,7 +21,71 @@
             text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
 
-        button {
+        .speed-grid {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            justify-content: space-between;
+            padding: 2px;
+        }
+
+        .speed-btn {
+            padding: 8px 6px;
+            font-size: 13px;
+            font-weight: bold;
+            flex: 1;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            color: white;
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .speed-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .speed-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #5a6578 0%, #3d4758 100%);
+        }
+
+        .speed-btn:hover::before {
+            left: 100%;
+        }
+
+        .speed-btn:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.1s ease;
+        }
+
+        .speed-btn.active {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            box-shadow: 0 4px 8px rgba(72, 187, 120, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .speed-btn.active:hover {
+            background: linear-gradient(135deg, #58c788 0%, #48b179 100%);
+            box-shadow: 0 6px 12px rgba(72, 187, 120, 0.5);
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .toggle-btn {
             padding: 12px 20px;
             font-size: 16px;
             font-weight: bold;
@@ -29,33 +93,134 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             color: white;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            position: relative;
+            overflow: hidden;
         }
 
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        .toggle-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
         }
 
-        button:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        .toggle-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #58c788 0%, #48b179 100%);
+        }
+
+        .toggle-btn:hover::before {
+            left: 100%;
+        }
+
+        .toggle-btn:active {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            transition: all 0.1s ease;
+        }
+
+        .toggle-btn.running {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            box-shadow: 0 4px 8px rgba(245, 101, 101, 0.3);
+        }
+
+        .toggle-btn.running:hover {
+            background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+            box-shadow: 0 8px 16px rgba(245, 101, 101, 0.4);
+            transform: translateY(-3px) scale(1.02);
+        }
+
+        .toggle-btn.running:active {
+            transform: translateY(-1px) scale(0.98);
         }
 
         .status {
             font-size: 12px;
             margin-top: 10px;
             opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .status:hover {
+            opacity: 1;
+        }
+
+        /* Pulse animation for active speed button */
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 4px 8px rgba(72, 187, 120, 0.4);
+            }
+            50% {
+                box-shadow: 0 4px 8px rgba(72, 187, 120, 0.6);
+            }
+            100% {
+                box-shadow: 0 4px 8px rgba(72, 187, 120, 0.4);
+            }
+        }
+
+        .speed-btn.active {
+            animation: pulse 2s infinite;
+        }
+
+        /* Click ripple effect */
+        @keyframes ripple {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        .speed-btn::after,
+        .toggle-btn::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            pointer-events: none;
+        }
+
+        /* Focus states for accessibility */
+        .speed-btn:focus,
+        .toggle-btn:focus {
+            outline: 2px solid rgba(255, 255, 255, 0.5);
+            outline-offset: 2px;
+        }
+
+        .speed-btn:focus:not(:focus-visible),
+        .toggle-btn:focus:not(:focus-visible) {
+            outline: none;
         }
     </style>
 </head>
 
 <body>
     <div class="title">HTML5 Speed Hack</div>
-    <button id="toggleBtn">Start (5x)</button>
-    <div class="status">Press Space or Enter to toggle</div>
+    
+    <div class="speed-grid">
+        <button class="speed-btn" id="speed5" data-speed="5">x5</button>
+        <button class="speed-btn" id="speed10" data-speed="10">x10</button>
+        <button class="speed-btn" id="speed20" data-speed="20">x20</button>
+        <button class="speed-btn" id="speed30" data-speed="30">x30</button>
+    </div>
+    
+    <button class="toggle-btn" id="toggleBtn">Loading...</button>
+    <div class="status">Press Space/Enter to toggle, 1-4 for speeds</div>
+    <script src="speedState.js"></script>
     <script src="popup.js"></script>
 </body>
 
