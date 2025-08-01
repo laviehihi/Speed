@@ -17,7 +17,8 @@
     "permissions": [
         "scripting",
         "activeTab",
-        "storage"
+        "storage",
+        "tabs"
     ],
     "background": {
         "service_worker": "background.js"
@@ -25,18 +26,6 @@
     "content_scripts": [
         {
             "all_frames": true,
-            "world": "MAIN",
-            "run_at": "document_start",
-            "matches": [
-                "<all_urls>"
-            ],
-            "js": [
-                "pageScript.js"
-            ]
-        },
-        {
-            "all_frames": true,
-            "world": "ISOLATED",
             "run_at": "document_start",
             "matches": [
                 "<all_urls>"
@@ -44,6 +33,12 @@
             "js": [
                 "contentScript.js"
             ]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["pageScript.js"],
+            "matches": ["<all_urls>"]
         }
     ]
 }
